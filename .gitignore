@@ -1,0 +1,31 @@
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.DS_Store
+Thumbs.db
+*.log
+.gradle/
+build/
+cognito/build/
+cognito/app/build/
+.idea/
+*.iml
+*.iws
+local.properties
+
+# Databases & Runtime State
+*.db
+*.sqlite
+*.sqlite3
+cognito.db
+
+# Large Models & Binaries (>100MB exceeds GitHub limits)
+*.tflite
+*.apk
+*.aab
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example

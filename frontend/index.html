@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognito - Offline AI Document Search & Topic Clustering</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase 10 Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="dark-mode">
+
+    <!-- Full-Screen Protected Login & Authentication Gate -->
+    <div class="auth-gate-screen" id="auth-gate-screen">
+        <div class="auth-gate-card">
+            <div class="modal-header">
+                <div class="modal-logo">
+                    <i class="fa-solid fa-brain-circuit text-gradient"></i>
+                </div>
+                <h1 class="modal-title" id="gate-auth-title">Create Cognito Account</h1>
+                <p class="modal-subtitle">First create your account to access your offline documents, AI clustering, and search</p>
+                <div class="auth-secure-pill">
+                    <i class="fa-solid fa-shield-halved"></i> Firebase Authentication Required
+                </div>
+            </div>
+            
+            <!-- Auth Tabs -->
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="gate-tab-signup" data-mode="signup">Create Account</button>
+                <button class="auth-tab" id="gate-tab-login" data-mode="login">Sign In</button>
+            </div>
+            
+            <!-- Error/Success Alert Box -->
+            <div class="auth-alert hidden" id="gate-auth-alert">
+                <i class="fa-solid fa-circle-exclamation"></i>
+                <span id="gate-auth-alert-msg"></span>
+            </div>
+
+            <!-- Auth Form -->
+            <form id="gate-auth-form" class="auth-form">
+                <div class="form-group" id="gate-group-display-name">
+                    <label for="gate-auth-display-name"><i class="fa-solid fa-user"></i> Full Name</label>
+                    <input type="text" id="gate-auth-display-name" placeholder="John Doe" autocomplete="name">
+                </div>
+                <div class="form-group">
+                    <label for="gate-auth-email"><i class="fa-solid fa-envelope"></i> User ID / Email</label>
+                    <input type="email" id="gate-auth-email" placeholder="name@example.com" required autocomplete="email">
+                </div>
+                <div class="form-group" id="gate-group-password">
+                    <div class="label-with-link">
+                        <label for="gate-auth-password"><i class="fa-solid fa-lock"></i> Password</label>
+                        <button type="button" class="btn-link forgot-pwd-link hidden" id="gate-forgot-pwd-btn">Forgot password?</button>
+                    </div>
+                    <input type="password" id="gate-auth-password" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-gradient btn-block" id="gate-auth-submit-btn">
+                    <i class="fa-solid fa-user-plus"></i> Create Account & Enter
+                </button>
+            </form>
+
+            <!-- Password Reset Form -->
+            <form id="gate-reset-pwd-form" class="auth-form hidden">
+                <p class="reset-desc">Enter your Gmail / registered email. Firebase will send a secure password reset link directly to your inbox.</p>
+                <div class="form-group">
+                    <label for="gate-reset-email"><i class="fa-solid fa-envelope"></i> Registered Gmail / Email</label>
+                    <input type="email" id="gate-reset-email" placeholder="name@gmail.com" autocomplete="email">
+                </div>
+                <button type="submit" class="btn btn-gradient btn-block" id="gate-reset-submit-btn">
+                    <i class="fa-solid fa-paper-plane"></i> Send Reset Link to Gmail
+                </button>
+                <button type="button" class="btn btn-secondary btn-block" id="gate-reset-back-btn" style="margin-top: 0.5rem;">
+                    <i class="fa-solid fa-arrow-left"></i> Back to Sign In
+                </button>
+            </form>
+            
+            <div class="auth-divider">
+                <span>or continue with</span>
+            </div>
+            
+            <div class="social-auth-grid">
+                <button type="button" class="btn btn-secondary social-btn" id="gate-google-auth-btn">
+                    <i class="fa-brands fa-google text-danger"></i> Google
+                </button>
+                <button type="button" class="btn btn-secondary social-btn" id="gate-guest-auth-btn">
+                    <i class="fa-solid fa-user-secret"></i> Guest Access
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application Container (Protected behind Login) -->
+    <div class="app-container hidden" id="app-container">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fa-solid fa-brain-circuit logo-icon"></i>
+                    <span class="logo-text">Cognito</span>
+                </div>
+                <span class="badge offline-badge">
+                    <i class="fa-solid fa-shield-halved"></i> Offline
+                </span>
+            </div>
+
+            <!-- Firebase User Profile Widget -->
+            <div class="sidebar-user-panel" id="sidebar-user-panel">
+                <div class="user-logged-out" id="user-logged-out">
+                    <button class="btn btn-primary btn-sm auth-open-btn" id="open-auth-modal-btn">
+                        <i class="fa-solid fa-right-to-bracket"></i> Sign In / Register
+                    </button>
+                </div>
+                <div class="user-logged-in hidden" id="user-logged-in">
+                    <div class="user-info-row">
+                        <div class="user-avatar" id="user-avatar-badge">
+                            <i class="fa-solid fa-user"></i>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name" id="user-display-name">Cognito User</span>
+                            <span class="user-email" id="user-email-text">user@cognito.ai</span>
+                        </div>
+                        <button class="btn-icon logout-btn" id="auth-logout-btn" title="Sign Out">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-tab="dashboard-view" id="nav-dashboard">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span>Dashboard</span>
+                </button>
+                <button class="nav-btn" data-tab="map-view" id="nav-map">
+                    <i class="fa-solid fa-diagram-project"></i>
+                    <span>Document Map</span>
+                </button>
+                <button class="nav-btn" data-tab="search-view" id="nav-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Cognitive Search</span>
+                </button>
+                <button class="nav-btn" data-tab="history-view" id="nav-history">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    <span>Search History</span>
+                </button>
+            </nav>
+            
+            <!-- Mobile Sync Info Panel -->
+            <div class="sidebar-sync-panel">
+                <div class="sync-panel-header">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                    <span>Mobile Sync</span>
+                </div>
+                <div class="sync-address-box">
+                    <span class="address-label">PC Sync IP Address</span>
+                    <span class="address-value" id="sync-ip-val">http://localhost:8000</span>
+                </div>
+                <div class="sync-status-row">
+                    <span class="sync-status-dot" id="sync-status-dot"></span>
+                    <span id="sync-status-text">Local Sync Server Active</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="pulse-dot green" id="status-dot"></span>
+                    <span class="status-label" id="status-text">Live Sync Active</span>
+                </div>
+                <div class="version"><span class="realtime-pill"><i class="fa-solid fa-bolt"></i> REALTIME</span> v1.1.0</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            
+            <!-- Dashboard View -->
+            <section id="dashboard-view" class="tab-content active">
+                <div class="header-section">
+                    <h1 class="page-title">Local Directory Dashboard</h1>
+                    <p class="page-subtitle">Scan directories and train local topic clustering models completely offline.</p>
+                </div>
+                
+                <div class="dashboard-grid">
+                    <!-- Directory Configuration Card -->
+                    <div class="dashboard-card setup-card">
+                        <h2 class="card-title"><i class="fa-solid fa-folder-open text-primary"></i> Target Folder Scan</h2>
+                        <p class="card-desc">Enter the absolute path to any folder on your computer (excluding image folders for specialized parsing).</p>
+                        
+                        <div class="folder-input-group">
+                            <input type="text" id="directory-path" placeholder="C:\Users\Username\Documents\Gen AI" autocomplete="off">
+                            <button id="scan-btn" class="btn btn-primary">
+                                <i class="fa-solid fa-magnifying-glass-arrow-right"></i> Scan Folder
+                            </button>
+                        </div>
+                        
+                        <div class="quick-demo-container">
+                            <span>Or load the curated test workspace:</span>
+                            <button id="demo-btn" class="btn btn-secondary btn-sm">
+                                <i class="fa-solid fa-folder-plus"></i> Load Demo Data
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Scan Statistics Card -->
+                    <div class="dashboard-card stats-card">
+                        <h2 class="card-title"><i class="fa-solid fa-chart-simple text-accent"></i> Scanning Statistics</h2>
+                        <div class="stats-grid">
+                            <div class="stat-box">
+                                <div class="stat-num" id="stat-total-docs">0</div>
+                                <div class="stat-label">Total Documents</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-num" id="stat-total-size">0 KB</div>
+                                <div class="stat-label">Total Size</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="stat-num" id="stat-clusters">0</div>
+                                <div class="stat-label">Identified Topics</div>
+                            </div>
+                        </div>
+                        
+                        <div class="file-breakdown" id="file-breakdown-container">
+                            <div class="breakdown-title">File Types Breakdown:</div>
+                            <div class="breakdown-bar" id="breakdown-bar">
+                                <!-- Dynamic Breakdown Bars -->
+                            </div>
+                            <ul class="breakdown-list" id="breakdown-list">
+                                <li class="empty-state">No documents indexed yet.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Local Training Card -->
+                    <div class="dashboard-card training-card full-width">
+                        <div class="training-header">
+                            <div>
+                                <h2 class="card-title"><i class="fa-solid fa-microchip-ai text-gradient"></i> Train Local Intelligence Model</h2>
+                                <p class="card-desc">Fits a TF-IDF vocabulary representer, executes unsupervised KMeans topic clustering, and generates 2D relation coordinates.</p>
+                            </div>
+                            <button id="train-btn" class="btn btn-gradient disabled" disabled>
+                                <i class="fa-solid fa-play"></i> Train Local Model
+                            </button>
+                        </div>
+                        
+                        <!-- Terminal Log Outputs -->
+                        <div class="terminal-container">
+                            <div class="terminal-header">
+                                <div class="terminal-buttons">
+                                    <span></span>
+                                    <span></span>
+                                    <span></span>
+                                </div>
+                                <span class="terminal-title"><i class="fa-solid fa-terminal"></i> Cognito Training Console</span>
+                            </div>
+                            <div class="terminal-body" id="terminal-logs">
+                                <div class="terminal-line system-line">[SYSTEM] Waiting for folder scan to begin...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Map View (2D Interactive Relationship Map) -->
+            <section id="map-view" class="tab-content">
+                <div class="header-section flex-row">
+                    <div>
+                        <h1 class="page-title">Semantic Document Map</h1>
+                        <p class="page-subtitle">Interactive 2D relationships between files. Distance implies semantic connection.</p>
+                    </div>
+                    <div class="map-controls">
+                        <button id="map-reset-btn" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-arrows-to-eye"></i> Recenter Map
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="map-layout">
+                    <!-- High Performance Map Canvas -->
+                    <div class="map-canvas-container">
+                        <canvas id="document-map-canvas"></canvas>
+                        
+                        <!-- Instructions Overlay -->
+                        <div class="canvas-instructions">
+                            <i class="fa-solid fa-circle-info"></i> Scroll to zoom | Drag to pan | Click nodes to preview file content
+                        </div>
+                        
+                        <!-- Mini Tooltip Hover -->
+                        <div id="map-node-tooltip" class="node-tooltip hidden">
+                            <div class="tooltip-title" id="tooltip-title">File Name</div>
+                            <div class="tooltip-cluster" id="tooltip-cluster">Cluster Name</div>
+                            <div class="tooltip-meta" id="tooltip-meta">Size • Type</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Clusters/Topics Sidebar List -->
+                    <div class="map-sidebar-legend">
+                        <h3 class="legend-header"><i class="fa-solid fa-list-ul"></i> Identified Topics</h3>
+                        <ul class="legend-list" id="map-legend-list">
+                            <li class="empty-state">Train Cognito model to visualize topic clusters.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Cognitive Search View (ChatGPT Style) -->
+            <section id="search-view" class="tab-content">
+                <div class="view-header">
+                    <h1>Cognito AI Chat</h1>
+                    <p>Conversational Generative AI question answering and deep search over your offline documents.</p>
+                </div>
+                
+                <div class="chat-layout-container">
+                    <!-- Filters Box (Compact Header) -->
+                    <div class="chat-filters-panel">
+                        <div class="search-filters-bar" style="border: none; padding: 0; display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                            <div class="filter-group" style="margin: 0;">
+                                <label><i class="fa-solid fa-filter"></i> Type:</label>
+                                <div class="filter-chips" id="filter-type-chips">
+                                    <button class="chip active" data-type="">All</button>
+                                    <button class="chip" data-type="PDF">PDF</button>
+                                    <button class="chip" data-type="Word (DOCX)">Word</button>
+                                    <button class="chip" data-type="PowerPoint (PPTX)">PPT</button>
+                                    <button class="chip" data-type="Text (TXT)">TXT</button>
+                                    <button class="chip" data-type="Markdown (MD)">MD</button>
+                                </div>
+                            </div>
+                            <div class="filter-group" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <label><i class="fa-solid fa-tags"></i> Topic:</label>
+                                <select id="search-cluster-filter" class="filter-select" style="width: 150px; padding: 0.35rem 0.75rem;">
+                                    <option value="">All Categories</option>
+                                    <!-- Dynamic Options -->
+                                </select>
+                            </div>
+                            <div class="filter-group" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                <label><i class="fa-solid fa-file-invoice"></i> Specific File:</label>
+                                <input type="text" id="search-filename-filter" class="filter-select" placeholder="Filename (e.g. sheet.pdf)..." style="width: 220px; padding: 0.35rem 0.75rem;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Window Area -->
+                    <div class="chat-messages-container" id="chat-messages-container">
+                        <!-- Message Bubbles populated dynamically -->
+                        <div class="chat-bubble ai">
+                            <div class="chat-bubble-avatar"><i class="fa-solid fa-robot"></i></div>
+                            <div class="chat-bubble-content">
+                                <div class="chat-message-text">Hello! I am Cognito, your offline Gen AI assistant. I have indexed your documents and am ready for deep search. Ask me any question in plain English, and I will extract the best answer from your files.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Input Panel (Bottom Anchor) -->
+                    <div class="chat-input-panel">
+                        <div class="search-input-group">
+                            <i class="fa-solid fa-magnifying-glass search-bar-icon"></i>
+                            <input type="text" id="search-query" placeholder="Ask a question about your documents (e.g. 'what is the Aadhaar cardholder name?')..." autocomplete="off">
+                            <button id="search-btn" class="btn btn-primary">
+                                <i class="fa-solid fa-paper-plane"></i> Ask AI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Search History View -->
+            <section id="history-view" class="tab-content">
+                <div class="view-header">
+                    <h1>Search & AI QA History</h1>
+                    <p>Track your past queries, questions, and extracted answers completely offline.</p>
+                </div>
+                
+                <div class="dashboard-card full-width">
+                    <div class="card-header">
+                        <h2>Query History Log</h2>
+                        <button id="clear-history-btn" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-trash-can"></i> Clear History
+                        </button>
+                    </div>
+                    <div class="history-list-container">
+                        <div class="results-list" id="history-list">
+                            <!-- Populated dynamically -->
+                            <div class="search-empty-state">
+                                <i class="fa-solid fa-clock-rotate-left"></i>
+                                <h3>No Search History</h3>
+                                <p>Your past queries and AI extracted answers will appear here.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Document Preview Side Drawer -->
+        <aside class="document-drawer hidden" id="document-drawer">
+            <div class="drawer-header">
+                <button class="close-drawer-btn" id="close-drawer-btn">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="drawer-title-group">
+                    <h2 class="drawer-filename" id="drawer-filename">document_name.pdf</h2>
+                    <div class="drawer-path" id="drawer-path">C:\Users\Documents\document_name.pdf</div>
+                </div>
+            </div>
+            
+            <div class="drawer-meta-section">
+                <span class="badge type-badge" id="drawer-type-badge">PDF</span>
+                <span class="badge size-badge" id="drawer-size-badge">120 KB</span>
+                <span class="badge cluster-badge" id="drawer-cluster-badge">Cluster 1</span>
+                
+                <button id="drawer-open-folder-btn" class="btn btn-secondary btn-sm ml-auto">
+                    <i class="fa-solid fa-folder-open text-primary"></i> Reveal in Explorer
+                </button>
+            </div>
+            
+            <div class="drawer-content-container">
+                <h3 class="content-header"> Extracted Content Text Preview</h3>
+                <div class="drawer-text-body" id="drawer-text-body">
+                    <!-- Document parsed text preview -->
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Firebase Authentication Modal -->
+        <div class="modal-overlay hidden" id="auth-modal">
+            <div class="modal-card auth-modal-card">
+                <button class="modal-close-btn" id="close-auth-modal-btn">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                
+                <div class="modal-header">
+                    <div class="modal-logo">
+                        <i class="fa-solid fa-brain-circuit text-gradient"></i>
+                    </div>
+                    <h2 class="modal-title" id="auth-modal-title">Sign In to Cognito</h2>
+                    <p class="modal-subtitle">Secure Firebase authentication & real-time document search</p>
+                </div>
+                
+                <!-- Auth Tabs -->
+                <div class="auth-tabs">
+                    <button class="auth-tab active" id="tab-login" data-mode="login">Sign In</button>
+                    <button class="auth-tab" id="tab-signup" data-mode="signup">Create Account</button>
+                </div>
+                
+                <!-- Error/Success Alert Box -->
+                <div class="auth-alert hidden" id="auth-alert">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span id="auth-alert-msg"></span>
+                </div>
+
+                <!-- Auth Form -->
+                <form id="auth-form" class="auth-form">
+                    <div class="form-group hidden" id="group-display-name">
+                        <label for="auth-display-name"><i class="fa-solid fa-user"></i> Full Name</label>
+                        <input type="text" id="auth-display-name" placeholder="John Doe" autocomplete="name">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-email"><i class="fa-solid fa-envelope"></i> Email Address</label>
+                        <input type="email" id="auth-email" placeholder="name@example.com" required autocomplete="email">
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password"><i class="fa-solid fa-lock"></i> Password</label>
+                        <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-gradient btn-block" id="auth-submit-btn">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In
+                    </button>
+                </form>
+                
+                <div class="auth-divider">
+                    <span>or continue with</span>
+                </div>
+                
+                <div class="social-auth-grid">
+                    <button type="button" class="btn btn-secondary social-btn" id="google-auth-btn">
+                        <i class="fa-brands fa-google text-danger"></i> Google
+                    </button>
+                    <button type="button" class="btn btn-secondary social-btn" id="guest-auth-btn">
+                        <i class="fa-solid fa-user-secret"></i> Guest Mode
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Core App Logic Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

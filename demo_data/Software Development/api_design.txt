@@ -1,0 +1,20 @@
+RESTful API Design & Best Practices
+
+REST (Representational State Transfer) is an architectural style for designing networked applications. It relies on stateless, client-server communication using HTTP protocols.
+
+Key HTTP Verbs:
+- GET: Retrieve a resource (e.g., GET /api/documents)
+- POST: Create a new resource or perform an action (e.g., POST /api/train)
+- PUT: Update an existing resource entirely
+- PATCH: Update parts of an existing resource
+- DELETE: Remove a resource
+
+Common HTTP Status Codes:
+- 200 OK: Request succeeded
+- 201 Created: Resource successfully created
+- 400 Bad Request: Invalid input from client
+- 401 Unauthorized: Authentication required
+- 404 Not Found: Resource does not exist
+- 500 Internal Server Error: Backend crash
+
+In Cognito, we use FastAPI to expose lightweight endpoints that serve local document data to our Single Page Application.
