@@ -29,3 +29,10 @@ cognito.db
 .env
 .env.*
 !.env.example
+
+# Test & CI Output Reports
+reports/
+load-test-reports/
+unified-reports/
+security-artifacts/
+Vulnerability Test Results/

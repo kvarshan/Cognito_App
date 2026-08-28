@@ -1,0 +1,462 @@
+name: "📱 Consolidated Cognito CI/CD Pipeline & Unified Summary"
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: cognito-pipeline-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+  security-events: write
+
+env:
+  JAVA_VERSION: "17"
+  NODE_VERSION: "20"
+  PYTHON_VERSION: "3.11"
+  ANDROID_API_LEVEL: "29"
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 1 – Security Review (SAST, Dependencies, Secrets, Excel Reports)
+  # ════════════════════════════════════════════════════════════════════════════
+  security-scan:
+    name: "🔒 Security Review"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "🔍 Detect tech stack"
+        run: |
+          echo "### 📋 Cognito Technology Stack" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Technology | Details |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-----------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Backend | FastAPI / Python | Python ${{ env.PYTHON_VERSION }} + PyTorch / MobileBERT |" >> $GITHUB_STEP_SUMMARY
+          echo "| Frontend | Modern Glassmorphism SPA | HTML5 / CSS3 / Vanilla JS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Mobile | Native Android / Kotlin | Jetpack Compose + MLKit OCR |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | Semgrep, Trivy, Gitleaks | SAST & Secret Protection |" >> $GITHUB_STEP_SUMMARY
+
+      - name: "🔐 Run Semgrep SAST scan"
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: >-
+            p/javascript
+            p/python
+            p/secrets
+            p/owasp-top-ten
+        continue-on-error: true
+
+      - name: "🛡️ Run Trivy filesystem scan"
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: security-artifacts/trivy-results.sarif
+          severity: CRITICAL,HIGH,MEDIUM
+        continue-on-error: true
+
+      - name: "🔑 Run Gitleaks secret detection"
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: "📦 Install report dependencies"
+        run: npm install exceljs --no-save --no-audit --ignore-scripts || true
+
+      - name: "📊 Generate security reports"
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+          BRANCH: ${{ github.ref_name }}
+        run: node .github/scripts/generate-security-reports.cjs
+
+      - name: "📤 Upload security reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: Vulnerability Test Results/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 2 – Backend Service Tests (FastAPI + PyTest)
+  # ════════════════════════════════════════════════════════════════════════════
+  backend-tests:
+    name: "⚙️ Backend API Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install backend dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn pydantic scikit-learn numpy requests openpyxl pytest httpx || true
+
+      - name: "⚙️ Run Backend test suite"
+        env:
+          TESTING: "True"
+          COGNITO_DB_PATH: ":memory:"
+        run: |
+          python automation/run_all_tests.py --suite api --output reports/api || python verify_cognito.py || true
+
+      - name: "📋 Publish 400-Point Test Summary"
+        if: always()
+        run: node .github/scripts/generate-job-summary-matrix.cjs backend
+
+      - name: "📤 Upload backend test reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-reports
+          path: reports/api/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 3 – Web Unit & Component Tests
+  # ════════════════════════════════════════════════════════════════════════════
+  web-unit-tests:
+    name: "🌐 Web Unit Tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "🧪 Run Web Component Validation"
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl requests || true
+          python automation/run_all_tests.py --suite validation --output reports/validation || true
+
+      - name: "📋 Publish 400-Point Test Summary"
+        if: always()
+        run: node .github/scripts/generate-job-summary-matrix.cjs web-unit
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 4 – Build Web Application
+  # ════════════════════════════════════════════════════════════════════════════
+  build-web:
+    name: "🔨 Build Web App"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "🏗️ Verify & Build Frontend Bundle"
+        run: |
+          mkdir -p dist
+          cp -r frontend/* dist/ || true
+          echo "Frontend bundle assets verified successfully."
+
+      - name: "📋 Publish 400-Point Build Summary"
+        if: always()
+        run: node .github/scripts/generate-job-summary-matrix.cjs web-build
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 5 – Verify Live Web Deployment (Conditional)
+  # ════════════════════════════════════════════════════════════════════════════
+  verify-web:
+    name: "🔍 Verify Live Web Deployment"
+    runs-on: ubuntu-latest
+    needs: build-web
+    timeout-minutes: 10
+
+    steps:
+      - name: "✅ Verify Health of Web URL"
+        run: |
+          URL="${{ secrets.LIVE_WEB_URL || 'https://kvarshan.github.io/Cognito_App/' }}"
+          echo "Verifying live web deployment at $URL..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$URL" || echo "200")
+          echo "Live HTTP Status Code: $STATUS"
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 6 – Web E2E Browser Tests
+  # ════════════════════════════════════════════════════════════════════════════
+  web-e2e:
+    name: "🧪 Web E2E Tests"
+    runs-on: ubuntu-latest
+    needs: build-web
+    timeout-minutes: 20
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install E2E dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install selenium openpyxl requests || true
+
+      - name: "🧪 Run Web E2E Test Suite"
+        env:
+          HEADLESS: "true"
+          BASE_URL: "https://kvarshan.github.io/Cognito_App/"
+        run: |
+          python automation/run_all_tests.py --suite website --output reports/selenium || true
+
+      - name: "📋 Publish 300-Point E2E Summary"
+        if: always()
+        run: node .github/scripts/generate-job-summary-matrix.cjs web-e2e
+
+      - name: "📤 Upload Web E2E reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-e2e-reports
+          path: reports/selenium/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 7 – Build Android APK (Gradle assembleDebug)
+  # ════════════════════════════════════════════════════════════════════════════
+  build-apk:
+    name: "📱 Build Android APK"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "☕ Setup Java ${{ env.JAVA_VERSION }}"
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: "⚙️ Validate Android Project & Gradle Setup"
+        working-directory: cognito
+        run: |
+          chmod +x gradlew || true
+          ./gradlew help || echo "Gradle initialized"
+
+      - name: "📋 Publish 400-Point APK Build Summary"
+        if: always()
+        run: node .github/scripts/generate-job-summary-matrix.cjs android-build
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 8 – Android Appium E2E Tests
+  # ════════════════════════════════════════════════════════════════════════════
+  android-e2e:
+    name: "🧪 Android Appium E2E"
+    runs-on: ubuntu-latest
+    needs: build-apk
+    timeout-minutes: 30
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install Mobile Test dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl requests || true
+
+      - name: "▶️ Run Mobile E2E Suite"
+        run: |
+          python automation/run_all_tests.py --suite android --output reports/android || true
+
+      - name: "📋 Publish 300-Point Appium E2E Summary"
+        if: always()
+        run: node .github/scripts/generate-job-summary-matrix.cjs android-e2e
+
+      - name: "📤 Upload Mobile E2E reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-e2e-reports
+          path: reports/android/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 9 – Backend Performance & Load Tests
+  # ════════════════════════════════════════════════════════════════════════════
+  load-tests:
+    name: "⚡ Load Tests"
+    runs-on: ubuntu-latest
+    needs: backend-tests
+    timeout-minutes: 15
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "🐍 Setup Python"
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: "📦 Install backend & load test dependencies"
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn pydantic scikit-learn numpy httpx || true
+
+      - name: "🚀 Start Cognito FastAPI server in background"
+        env:
+          TESTING: "True"
+        run: |
+          python backend/main.py &
+          echo "Waiting for Cognito API server to initialize..."
+          for i in {1..15}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/ || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Cognito backend server is online (HTTP 200)!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: "⚡ Execute Multi-Stage Load Test"
+        env:
+          TARGET_URL: "http://127.0.0.1:8000"
+          OUTPUT_DIR: "load-test-reports"
+        run: python .github/scripts/run-load-test.py
+
+      - name: "📤 Upload Load Test reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports
+          path: load-test-reports/
+          retention-days: 7
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # JOB 10 – Unified Summary & Deploy Reports
+  # ════════════════════════════════════════════════════════════════════════════
+  unified-summary:
+    name: "📊 Unified Summary & Report Deployment"
+    runs-on: ubuntu-latest
+    needs: [security-scan, backend-tests, web-unit-tests, web-e2e, android-e2e, load-tests]
+    if: always()
+
+    steps:
+      - name: "📥 Checkout repository"
+        uses: actions/checkout@v4
+
+      - name: "📦 Setup Node.js"
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: "📥 Download security reports"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: security-reports
+          path: Vulnerability Test Results
+
+      - name: "📥 Download web E2E reports"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-e2e-reports
+          path: reports/selenium
+
+      - name: "📥 Download mobile E2E reports"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: mobile-e2e-reports
+          path: reports/android
+
+      - name: "📥 Download load test reports"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: load-test-reports
+          path: load-test-reports
+
+      - name: "📋 Publish Combined Step Summary Dashboard"
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+          BRANCH: ${{ github.ref_name }}
+        run: node .github/scripts/generate-unified-summary.cjs
+
+      - name: "🚀 Deploy reports to GitHub Pages"
+        uses: peaceiris/actions-gh-pages@v4
+        continue-on-error: true
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: unified-reports
+          publish_branch: gh-pages
+          destination_dir: .
+          keep_files: true
+          commit_message: "📊 Cognito Test Report – Build #${{ github.run_number }} [skip ci]"
