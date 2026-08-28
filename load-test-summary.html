@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cognito Load Testing Benchmark</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #e2e8f0; padding: 30px; }
+        .card { background: #161e2e; border-radius: 12px; padding: 24px; max-width: 900px; margin: 0 auto; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+        h1 { color: #38bdf8; margin-top: 0; }
+        .badge { background: #10b981; color: white; padding: 6px 14px; border-radius: 9999px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; border-bottom: 1px solid #2d3748; text-align: left; }
+        th { color: #94a3b8; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>⚡ Cognito Backend Load Test Results <span class="badge">FAILED</span></h1>
+        <p>Executed multi-stage load simulation up to 100 Virtual Users across neural search & document indexing endpoints.</p>
+        <table>
+            <tr><th>Metric</th><th>Result</th></tr>
+            <tr><td>Total Requests</td><td><strong>19,452</strong></td></tr>
+            <tr><td>Successful Requests</td><td><strong style="color:#10b981">0</strong></td></tr>
+            <tr><td>Requests / Second (RPS)</td><td><strong>1205.89 req/sec</strong></td></tr>
+            <tr><td>Average Latency</td><td><strong>22.54 ms</strong></td></tr>
+            <tr><td>p95 Latency</td><td><strong>50.19 ms</strong></td></tr>
+            <tr><td>Error Rate</td><td><strong style="color:#10b981">100.0%</strong></td></tr>
+            <tr><td>Max Concurrent VUs</td><td><strong>100 VUs</strong></td></tr>
+        </table>
+    </div>
+</body>
+</html>
