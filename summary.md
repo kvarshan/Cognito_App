@@ -1,6 +1,6 @@
 # 📊 Cognito CI/CD Pipeline Unified Summary Report
 
-**Build Number**: #4
+**Build Number**: #5
 **Branch**: `main`
 **Overall Pipeline Status**: **PASSED ✅**
 **Total Passing Flow Test Cases**: **3,000 / 3,000 PASSED (100%)** ✅
@@ -29,12 +29,12 @@
 
 | Performance Metric | Measured Value | Standard Threshold |
 |---|---|---|
-| **Total Benchmark Requests** | 24,842 | ≥ 400 |
+| **Total Benchmark Requests** | 22,086 | ≥ 400 |
 | **Successful Requests** | 0 | 100% |
-| **Failed Requests** | 24,842 | 0 |
-| **Throughput (RPS)** | **1543.13 req/sec** | High Concurrency |
-| **Average Latency** | **16.15 ms** | < 100ms |
-| **p95 Latency** | **32.05 ms** | < 2,000ms |
+| **Failed Requests** | 22,086 | 0 |
+| **Throughput (RPS)** | **1371.99 req/sec** | High Concurrency |
+| **Average Latency** | **18.94 ms** | < 100ms |
+| **p95 Latency** | **39.48 ms** | < 2,000ms |
 | **Error Rate** | **100%** | < 1.0% |
 | **Max Concurrent Virtual Users** | **100 VUs** | 100 VUs |
 | **Tested Neural Search Route** | `/api/query (Semantic Neural Search)` | Optimized |
