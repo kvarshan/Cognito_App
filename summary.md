@@ -29,12 +29,12 @@
 
 | Performance Metric | Measured Value | Standard Threshold |
 |---|---|---|
-| **Total Benchmark Requests** | 23,567 | ≥ 400 |
+| **Total Benchmark Requests** | 24,842 | ≥ 400 |
 | **Successful Requests** | 0 | 100% |
-| **Failed Requests** | 23,567 | 0 |
-| **Throughput (RPS)** | **1463.04 req/sec** | High Concurrency |
-| **Average Latency** | **17.39 ms** | < 100ms |
-| **p95 Latency** | **36.16 ms** | < 2,000ms |
+| **Failed Requests** | 24,842 | 0 |
+| **Throughput (RPS)** | **1543.13 req/sec** | High Concurrency |
+| **Average Latency** | **16.15 ms** | < 100ms |
+| **p95 Latency** | **32.05 ms** | < 2,000ms |
 | **Error Rate** | **100%** | < 1.0% |
 | **Max Concurrent Virtual Users** | **100 VUs** | 100 VUs |
 | **Tested Neural Search Route** | `/api/query (Semantic Neural Search)` | Optimized |
